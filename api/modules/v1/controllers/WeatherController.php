@@ -4,6 +4,7 @@ namespace api\modules\v1\controllers;
 
 use Exception;
 use Yii;
+use yii\base\InvalidConfigException;
 use yii\helpers\ArrayHelper;
 use yii\httpclient\Client;
 
@@ -14,12 +15,15 @@ class WeatherController extends AppController
     private float $latitude;
     private float $longitude;
 
-    public function __construct($id, $module, $config = [])
+    /**
+     * @throws InvalidConfigException
+     */
+    public function init(): void
     {
-        parent::__construct($id, $module, $config);
-        $this->apiKey = $_ENV['YANDEX_WEATHER_API_KEY'];
-        $this->latitude = (float)$_ENV['DEFAULT_LATITUDE'];
-        $this->longitude = (float)$_ENV['DEFAULT_LONGITUDE'];
+        parent::init();
+        $this->apiKey = Yii::$app->environment->YANDEX_WEATHER_API_KEY;
+        $this->latitude = (float)Yii::$app->environment->DEFAULT_LATITUDE;
+        $this->longitude = (float)Yii::$app->environment->DEFAULT_LONGITUDE;
     }
 
     public function behaviors(): array
