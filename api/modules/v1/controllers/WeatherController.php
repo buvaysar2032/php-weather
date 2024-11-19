@@ -5,48 +5,54 @@ namespace api\modules\v1\controllers;
 use Exception;
 use Yii;
 use yii\helpers\ArrayHelper;
+use yii\httpclient\Client;
 
 class WeatherController extends AppController
 {
+    private string $apiUrl = 'https://api.weather.yandex.ru/v2/forecast';
+    private string $apiKey;
+    private float $latitude;
+    private float $longitude;
+
+    public function __construct($id, $module, $config = [])
+    {
+        parent::__construct($id, $module, $config);
+        $this->apiKey = $_ENV['YANDEX_WEATHER_API_KEY'];
+        $this->latitude = (float)$_ENV['DEFAULT_LATITUDE'];
+        $this->longitude = (float)$_ENV['DEFAULT_LONGITUDE'];
+    }
+
     public function behaviors(): array
     {
         return ArrayHelper::merge(parent::behaviors(), ['auth' => ['except' => ['index']]]);
     }
 
-    private string $apiUrl = 'https://api.weather.yandex.ru/v2/forecast';
-    private string $apiKey = 'c21102a8-9f57-42ee-bbaf-34f89ad69742';
-
     /**
      * @throws Exception
      */
-    public function actionIndex($lat, $lon)
+    public function actionIndex()
     {
-        $cacheKey = "weather_{$lat}_{$lon}";
+        $cacheKey = "weather_{$this->latitude}_{$this->longitude}";
 
         $cachedData = Yii::$app->cache->get($cacheKey);
         if ($cachedData !== false) {
             return json_decode($cachedData, true);
         }
 
-        $opts = [
-            'http' => [
-                'method' => 'GET',
-                'header' => "X-Yandex-Weather-Key: {$this->apiKey}\r\n",
-            ],
-        ];
+        $client = new Client();
+        $response = $client->createRequest()
+            ->setMethod('GET')
+            ->setUrl("{$this->apiUrl}?lat={$this->latitude}&lon={$this->longitude}")
+            ->addHeaders(['X-Yandex-Weather-Key' => $this->apiKey])
+            ->send();
 
-        $context = stream_context_create($opts);
-        $url = "{$this->apiUrl}?lat={$lat}&lon={$lon}";
-
-        $response = @file_get_contents($url, false, $context);
-
-        if ($response === false) {
-            throw new Exception('Ошибка при получении данных с Яндекс Погоды: ' . error_get_last()['message']);
+        if (!$response->isOk) {
+            Yii::error("Ошибка API: статус {$response->statusCode}", __METHOD__);
+            throw new Exception('Сервис временно недоступен. Пожалуйста, попробуйте позже.');
         }
 
-        // Кешируем ответ на 30 минут
-        Yii::$app->cache->set($cacheKey, $response, 1800);
+        Yii::$app->cache->set($cacheKey, $response->content, 1800); // Кешируем успешный ответ на 30 минут
 
-        return json_decode($response, true);
+        return json_decode($response->content, true);
     }
 }
