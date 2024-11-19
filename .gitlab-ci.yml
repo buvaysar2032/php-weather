@@ -1,0 +1,147 @@
+stages:
+  - build
+  - test
+  - docs
+  - build-image
+  - deploy
+
+build:
+  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/node:20
+  stage: build
+  only:
+    - master
+  cache:
+    key:
+      files:
+        - package.json
+    paths:
+      - node_modules/
+      - pnpm-lock.yaml
+    policy: pull-push
+  script:
+    - npm add -g pnpm
+    - pnpm update && pnpm lint && pnpm build
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - vue/dist/
+
+test:
+  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/docker:latest
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+  stage: test
+  only:
+    - master
+  cache:
+    key:
+      files:
+        - composer.json
+    paths:
+      - docker/mysql/data/
+      - vendor/
+      - composer.lock
+      - c3.php
+    policy: pull-push
+  services:
+    - name: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/docker:dind
+      alias: 'docker'
+  tags:
+    - backend
+  before_script:
+    - echo $CI_JOB_TOKEN | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - echo $CI_DEPENDENCY_PROXY_PASSWORD | docker login $CI_DEPENDENCY_PROXY_SERVER -u $CI_DEPENDENCY_PROXY_USER --password-stdin
+  script:
+    # Запуск контейнеров
+    - chmod 0777 ./docker/mysql/data
+    - docker compose -f ./docker-compose.yml -f ./docker-compose.test.yml up -d
+    - docker compose -f ./docker-compose.yml -f ./docker-compose.test.yml ps
+    # Инициализация проекта
+    - chmod +x ./init
+    - docker compose exec -T php init --env="Peppers Development" --overwrite=n
+    - docker compose exec -T php composer install --no-interaction
+    - docker compose exec -T php /wait
+    - docker compose exec -T php yii migrate --interactive=0
+    - docker compose exec -T php yii rbac/migrate --interactive=0
+    # Само тестирование
+    - docker compose exec -T php codecept run --no-interaction
+  artifacts:
+    when: on_failure
+    paths:
+      - admin/tests/_output/
+      - api/tests/_output/
+      - common/tests/_output/
+      - frontend/tests/_output/
+
+docs:
+  image:
+    name: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/phpdoc/phpdoc
+    entrypoint: [""]
+  stage: docs
+  environment:
+    name: Wiki
+  only:
+    - master
+  tags:
+    - frontend
+  cache:
+    paths:
+      - .phpdoc
+    policy: pull-push
+  script:
+    - ln -s ${CI_PROJECT_DIR} /data
+    - /opt/phpdoc/bin/phpdoc
+    - apt-get update && apt-get install -y rsync
+    - OUTPUT_DIR=/mnt/diskstation/web/dev/docs/yii-template/
+    - rsync -rv -delete htdocs/docs/ $OUTPUT_DIR
+    - chmod -R u=rwX,g=rwX,o=rwX $OUTPUT_DIR
+
+deploy-composer:
+  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/curlimages/curl:latest
+  only:
+    - tags
+  stage: deploy
+  script:
+    - 'curl --header "Job-Token: $CI_JOB_TOKEN" --data tag=${CI_COMMIT_TAG} "${CI_API_V4_URL}/projects/$CI_PROJECT_ID/packages/composer"'
+
+build-image:
+  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/docker:latest
+  stage: build-image
+  only:
+    - master
+  tags:
+    - backend
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+    IMAGE_SHORT_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+    IMAGE_LATEST_TAG: $CI_REGISTRY_IMAGE:latest
+  services:
+    - name: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/docker:dind
+      alias: 'docker'
+  before_script:
+    - echo $WEBSTACK_PASSWORD | docker login $CI_REGISTRY -u $WEBSTACK_USER --password-stdin
+  script:
+    - docker build -t $IMAGE_SHORT_TAG -f docker/app/Dockerfile .
+    - docker push $IMAGE_SHORT_TAG
+    - docker tag $IMAGE_SHORT_TAG $IMAGE_LATEST_TAG
+    - docker push $IMAGE_LATEST_TAG
+
+deploy-k8s:
+  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/alpine/k8s:1.29.2
+  stage: deploy
+  dependencies:
+    - build-image
+  only:
+    - master
+  tags:
+    - backend
+  variables:
+    IMAGE_TAG: $CI_REGISTRY_IMAGE:latest
+  before_script:
+    - echo ${KUBE_CONFIG} | base64 -d > ${KUBECONFIG}
+  script:
+    - helm upgrade --install yii2-template .helm --set-string Yii2.image=$IMAGE_TAG

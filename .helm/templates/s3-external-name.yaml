@@ -1,0 +1,11 @@
+{{- $fullName := include "yii2.fullname" . -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-s3
+  namespace: {{ $fullName }}
+spec:
+  type: ExternalName
+  externalName: {{ .Values.S3.hostname }}
+  ports:
+  - port: {{ .Values.S3.port }}

@@ -1,0 +1,101 @@
+stages:
+  - build
+  - test
+  - deploy
+
+build:
+  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/node:20
+  stage: build
+  only:
+    - master
+  cache:
+    key:
+      files:
+        - package.json
+    paths:
+      - node_modules/
+      - pnpm-lock.yaml
+    policy: pull-push
+  script:
+    - npm add -g pnpm
+    - pnpm update && pnpm lint && pnpm build
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - vue/dist/
+
+test:
+  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/docker:latest
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+  stage: test
+  only:
+    - master
+  cache:
+    key:
+      files:
+        - composer.json
+    paths:
+      - docker/mysql/data/
+      - vendor/
+      - composer.lock
+      - c3.php
+    policy: pull-push
+  services:
+    - name: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/docker:dind
+      alias: 'docker'
+  tags:
+    - backend
+  before_script:
+    - echo $CI_JOB_TOKEN | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - echo $CI_DEPENDENCY_PROXY_PASSWORD | docker login $CI_DEPENDENCY_PROXY_SERVER -u $CI_DEPENDENCY_PROXY_USER --password-stdin
+  script:
+    # Запуск контейнеров
+    - chmod 0777 ./docker/mysql/data
+    - docker compose -f ./docker-compose.yml -f ./docker-compose.test.yml up -d
+    - docker compose -f ./docker-compose.yml -f ./docker-compose.test.yml ps
+    # Инициализация проекта
+    - chmod +x ./init
+    - docker compose exec -T php init --env="Peppers Development" --overwrite=n
+    - docker compose exec -T php composer install --no-interaction
+    - docker compose exec -T php /wait
+    - docker compose exec -T php yii migrate --interactive=0
+    - docker compose exec -T php yii rbac/migrate --interactive=0
+    # Само тестирование
+    - docker compose exec -T php codecept run --no-interaction
+  artifacts:
+    when: on_failure
+    paths:
+      - admin/tests/_output/
+      - api/tests/_output/
+      - common/tests/_output/
+      - frontend/tests/_output/
+
+deploy:
+  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/alpine:latest
+  variables:
+    SSH_PORT: '22'
+  stage: deploy
+  rules:
+    -   if: '$CI_COMMIT_BRANCH == "master" && $HOST != null && $FTP_USER != null && $FTP_PASSWORD != null && $SSH_USER != null && $SSH_PRIVATE_KEY != null'
+  before_script:
+    - apk update && apk add lftp && apk add openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 0700 ~/.ssh
+  script:
+    - >
+      lftp -e "set ssl:verify-certificate no; open $HOST; user $FTP_USER $FTP_PASSWORD;
+      mirror -Rnev ./ /www/example.com --ignore-time -P=10
+      -X .git* -x .git/ -x .htaccess -x yii -x composer.lock
+      -x admin/config/main-local.php -x admin/config/params-local.php -x admin/runtime/
+      -x api/config/main-local.php -x api/config/params-local.php -x api/runtime/
+      -x common/config/main-local.php -x common/config/params-local.php -x common/runtime/
+      -x console/config/main-local.php -x console/config/params-local.php -x console/runtime/
+      -x frontend/config/main-local.php -x frontend/config/params-local.php -x frontend/runtime/
+      -x htdocs/assets/ -x htdocs/index.php -x htdocs/admin/assets/ -x htdocs/admin/index.php -x htdocs/api/assets/ -x htdocs/api/index.php
+      -x docker/ -x htdocs/uploads/ -x node_modules/ -x vue/admin/ -x vue/frontend/ -x ^\vendor/"
+    - ssh -o StrictHostKeyChecking=no $SSH_USER@$HOST -p $SSH_PORT "cd ~/www/example.com; php init-all -u --env=prod"

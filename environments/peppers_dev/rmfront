@@ -1,0 +1,103 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * Peppers Frontend deletion tool
+ *
+ * Tool created to full and safe delete frontend yii2 application from template
+ *
+ * @author m.kropukhinsky <m.kropukhinsky@peppers-studio.ru>
+ */
+
+require 'environments/echo.php';
+
+$root = __DIR__;
+$frontendRoot = $root . DIRECTORY_SEPARATOR . 'frontend';
+
+if (!file_exists($frontendRoot)) {
+    echo formatMessage('Фронтенд уже удален из шаблона', ['fg-green']);
+    exit(0);
+}
+rrmdir($frontendRoot);
+
+$htdocs = $root . DIRECTORY_SEPARATOR . 'htdocs' . DIRECTORY_SEPARATOR;
+if (file_exists($htdocs . 'favicon.ico')) {
+    unlink($htdocs . 'favicon.ico');
+}
+if (file_exists($htdocs . '.htaccess')) {
+    unlink($htdocs . '.htaccess');
+}
+if (file_exists($htdocs . 'assets')) {
+    rrmdir($htdocs . 'assets');
+}
+if (file_exists($htdocs . 'images')) {
+    rrmdir($htdocs . 'images');
+}
+if (file_exists($htdocs . 'js')) {
+    rrmdir($htdocs . 'js');
+}
+if (file_exists($htdocs . 'styles')) {
+    rrmdir($htdocs . 'styles');
+}
+if (file_exists($htdocs . 'index.php')) {
+    unlink($htdocs . 'index.php');
+}
+if (file_exists($htdocs . 'index-test.php')) {
+    unlink($htdocs . 'index-test.php');
+}
+
+$environmentsPath = $root . DIRECTORY_SEPARATOR . 'environments';
+$environments = require $environmentsPath . DIRECTORY_SEPARATOR . 'index.php';
+foreach ($environments as $environment) {
+    if (
+        isset($environment['path']) &&
+        file_exists($path = $environmentsPath . DIRECTORY_SEPARATOR . $environment['path'])
+    ) {
+        if (file_exists($path . DIRECTORY_SEPARATOR . 'frontend')) {
+            rrmdir($path . DIRECTORY_SEPARATOR . 'frontend');
+        }
+        $htdocs = $path . DIRECTORY_SEPARATOR . 'htdocs' . DIRECTORY_SEPARATOR;
+        if (file_exists($htdocs . 'index.php')) {
+            unlink($htdocs . 'index.php');
+        }
+        if (file_exists($htdocs . 'index-test.php')) {
+            unlink($htdocs . 'index-test.php');
+        }
+    }
+}
+
+$environmentsConfig = file_get_contents($environmentsPath . DIRECTORY_SEPARATOR . 'index.php');
+$environmentsConfig = preg_replace('/[\s,]*\'frontend\/assets\/source\/styles\'/', '', $environmentsConfig);
+$environmentsConfig = preg_replace('/[\s,]*\'frontend\/runtime\'/', '', $environmentsConfig);
+$environmentsConfig = preg_replace('/[\s,]*\'htdocs\/assets\'/', '', $environmentsConfig);
+$environmentsConfig = preg_replace('/[\s,]*\'frontend\/config\/main-local\.php\'/', '', $environmentsConfig);
+file_put_contents($environmentsPath . DIRECTORY_SEPARATOR . 'index.php', $environmentsConfig);
+
+$webpackConfig = file_get_contents($root . DIRECTORY_SEPARATOR . 'vite.config.ts');
+$webpackConfig = preg_replace('/[\s,]*frontend:\s+?path\.resolve\(__dirname,\s+?\'vue\/frontend\/app.tsx\'\)/', '', $webpackConfig);
+file_put_contents($root . DIRECTORY_SEPARATOR . 'vite.config.ts', $webpackConfig);
+
+echo formatMessage('Фронтенд был успешно удален из шаблона', ['fg-green']);
+exit(0);
+
+/**
+ * Рекурсивное удаление каталога
+ */
+function rrmdir(string $dir): void
+{
+    if (is_dir($dir)) {
+        $objects = scandir($dir);
+        foreach ($objects as $object) {
+            if ($object !== "." && $object !== "..") {
+                if (is_link($dir . DIRECTORY_SEPARATOR . $object)) {
+                    unlink($dir . DIRECTORY_SEPARATOR . $object);
+                } elseif (is_dir($dir . DIRECTORY_SEPARATOR . $object) && !is_link($dir . "/" . $object)) {
+                    rrmdir($dir . DIRECTORY_SEPARATOR . $object);
+                } else {
+                    unlink($dir . DIRECTORY_SEPARATOR . $object);
+                }
+            }
+        }
+        rmdir($dir);
+    }
+}

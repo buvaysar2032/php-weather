@@ -1,0 +1,72 @@
+{{- $fullName := include "yii2.fullname" . -}}
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ $fullName }}-queue
+  namespace: {{ $fullName }}
+  labels:
+    {{- include "yii2.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $fullName }}-queue
+      k8s-app: {{ $fullName }}-queue
+  template:
+    metadata:
+      name: {{ $fullName }}-queue
+      labels:
+        app: {{ $fullName }}-queue
+        k8s-app: {{ $fullName }}-queue
+    spec:
+      containers:
+        - name: {{ $fullName }}-queue
+          image: {{ .Values.Yii2.image }}
+          command: ["/bin/sh","-c"]
+          args: ["php yii migrate --interactive=0 && php yii rbac/migrate --interactive=0 && php yii queue/listen --verbose"]
+          imagePullPolicy: Always
+          env:
+            - name: DB_HOST
+              value: {{ .Values.MySQL.host }}
+            - name: DB_USER
+              value: {{ .Values.MySQL.username }}
+            - name: DB_PASS
+              value: {{ .Values.MySQL.password }}
+            - name: DB_NAME
+              value: {{ .Values.MySQL.database }}
+            {{ if .Values.MySQL.slaveHosts }}
+            - name: DB_SLAVE_HOSTS
+              value: {{ .Values.MySQL.slaveHosts }}
+            {{ end }}
+            - name: YII_ENV
+              value: {{ .Values.Yii2.env }}
+            - name: S3_ENDPOINT
+              value: "http://{{ $fullName }}-s3:{{ .Values.S3.port }}"
+            - name: S3_REGION
+              value: {{ .Values.S3.region }}
+            - name: S3_KEY
+              value: {{ .Values.S3.key }}
+            - name: S3_SECRET
+              value: {{ .Values.S3.secret }}
+            - name: S3_BUCKET
+              value: {{ .Values.S3.bucket }}
+            - name: S3_PRIVATE_BUCKET
+              value: {{ .Values.S3.privateBucket }}
+            - name: MEMCAHCED_HOST
+              value: {{ .Values.Memcached.host }}
+            - name: MEMCAHCED_PORT
+              value: "{{ .Values.Memcached.port }}"
+            - name: REDIS_HOSTNAME
+              value: {{ .Values.Redis.host }}
+            - name: REDIS_PORT
+              value: "{{ .Values.Redis.port }}"
+            - name: REDIS_DATABASE
+              value: "{{ .Values.Redis.database }}"
+            - name: REDIS_PASSWORD
+              value: {{ .Values.Redis.password }}
+      imagePullSecrets:
+        - name: registry-key

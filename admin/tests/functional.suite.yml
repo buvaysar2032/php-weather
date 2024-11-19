@@ -1,0 +1,8 @@
+suite_namespace: admin\tests\functional
+actor: FunctionalTester
+modules:
+    enabled:
+        - Filesystem
+        - WebDriver
+        - Yii2:
+              part: [init, fixtures]

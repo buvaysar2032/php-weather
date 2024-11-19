@@ -1,0 +1,27 @@
+=view.beginPage()
+doctype strict
+html
+    head
+        meta(http-equiv='Content-Type' content='text/html; charset='+app.charset)
+        title=title
+        =view.head()
+    body
+        =view.beginBody()
+        table#Table_02(style='width:640px;border:0;border-collapse:collapse;margin:auto;display:block')
+            tr(style='width:640px;height:15px;display:block;background-color:#e4e4e4;padding:0')
+                td(colspan='3')
+            if view.params['image']
+                tr
+                    td(style='width:15px;height:133px;display:inline-block;background-color:#e4e4e4;padding:0')
+                    td(style='width:610px;height:133px;display:inline-block;background-color:#fff;padding:0')
+                        img(src=domain + view.params['image'] width='610' height='133' style='display: block;')
+                    td(style='width:15px;height:133px;display:inline-block;background-color:#e4e4e4')
+            tr
+                td(style='width:15px;height:366px;display:inline-block;background-color:#e4e4e4;padding:0')
+                td(style='width:510px;height:366px;display:inline-block;background-color:#fff;padding:0 40px 0 60px')
+                    !=content
+                td(style='width:15px;height:366px;display:inline-block;background-color:#e4e4e4;padding:0')
+            tr(style='width:640px;height:15px;display:block;background-color:#e4e4e4;padding:0')
+                td(colspan='3')
+        =view.endBody()
+=view.endPage()

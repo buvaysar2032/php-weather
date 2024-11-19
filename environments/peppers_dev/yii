@@ -1,0 +1,36 @@
+#!/usr/bin/env php
+<?php
+/**
+ * Yii console bootstrap file.
+ */
+
+defined('YII_DEBUG') || define('YII_DEBUG', true);
+defined('YII_ENV') || define('YII_ENV', $_ENV['YII_ENV'] ?? getenv('YII_ENV') ?: 'dev');
+
+require __DIR__ . '/vendor/autoload.php';
+require __DIR__ . '/vendor/yiisoft/yii2/Yii.php';
+require __DIR__ . '/common/config/bootstrap.php';
+require __DIR__ . '/console/config/bootstrap.php';
+
+$commonConfig = yii\helpers\ArrayHelper::merge(
+    require __DIR__ . '/common/config/main.php',
+    require __DIR__ . '/common/config/main-local.php'
+);
+$consoleConfig = yii\helpers\ArrayHelper::merge(
+    require __DIR__ . '/console/config/main.php',
+    require __DIR__ . '/console/config/main-local.php'
+);
+if (YII_ENV_TEST) {
+    $commonConfig = yii\helpers\ArrayHelper::merge(
+        $commonConfig,
+        require __DIR__ . '/common/config/test.php',
+        require __DIR__ . '/common/config/test-local.php'
+    );
+    // Затирание cookieValidationKey, т.к. его нет в yii/console/Request, но он нужен для тестирования в разделе common
+    unset($commonConfig['components']['request']['cookieValidationKey']);
+}
+$config = yii\helpers\ArrayHelper::merge($commonConfig, $consoleConfig);
+
+$application = new yii\console\Application($config);
+$exitCode = $application->run();
+exit($exitCode);

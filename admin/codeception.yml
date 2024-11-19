@@ -1,0 +1,37 @@
+namespace: admin\tests
+actor_suffix: Tester
+paths:
+  tests: tests
+  output: tests/_output
+  data: tests/_data
+  support: tests/_support
+bootstrap: _bootstrap.php
+settings:
+  colors: true
+  memory_limit: 1024M
+modules:
+  config:
+    WebDriver:
+      url: http://nginx/admin/
+      host: selenium
+      browser: chrome
+      capabilities:
+        acceptInsecureCerts: true
+        enableVerboseLogging: true
+        chromeOptions:
+          args: ["disable-dev-shm-usage", "no-sandbox", "disable-infobars", "headless", "disable-gpu"]
+    Yii2:
+      configFile: 'config/codeception-local.php'
+coverage:
+  enabled: true
+  remote: false
+  remote_config: admin/codeception.yml
+  whitelist:
+    include:
+      - components/*
+      - controllers/*
+      - models/*
+      - modules/rbac/behaviors/*
+      - modules/rbac/components/*
+      - modules/rbac/controllers/*
+      - modules/rbac/models/*

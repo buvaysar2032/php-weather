@@ -1,0 +1,28 @@
+namespace: api\tests
+actor_suffix: Tester
+paths:
+  tests: tests
+  output: tests/_output
+  data: tests/_data
+  support: tests/_support
+bootstrap: _bootstrap.php
+settings:
+  colors: true
+  memory_limit: 1024M
+modules:
+  config:
+    REST:
+      depends: PhpBrowser
+      url: http://nginx/api/v1/
+      part: Json
+    Yii2:
+      configFile: 'config/codeception-local.php'
+coverage:
+  enabled: true
+  remote: false
+  remote_config: api/codeception.yml
+  whitelist:
+    include:
+      - components/*
+      - modules/v1/controllers/*
+      - modules/v1/models/*

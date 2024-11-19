@@ -1,0 +1,24 @@
+img.preview-image {
+  max-height: 100%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: inherit;
+  color: inherit;
+
+  &:after {
+    content: "\f03e" " " attr(alt);
+    font-size: 16px;
+    font-family: 'Font Awesome 5 Free', serif;
+    display: block;
+    position: absolute;
+    z-index: 2;
+    top: -3px;
+    left: -7px;
+    width: 200%;
+    height: 200%;
+    background-color: inherit;
+    color: inherit;
+  }
+}

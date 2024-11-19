@@ -1,0 +1,27 @@
+volumes:
+  phpmyadmin_data:
+
+services:
+  nginx:
+    depends_on:
+      - php
+      - phpmyadmin
+    volumes:
+      - ./docker/nginx/app-dev.conf:/etc/nginx/conf.d/default.conf
+      - phpmyadmin_data:/var/www/html/:ro
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:fpm-alpine
+    restart: always
+    depends_on:
+      - mysql
+    environment:
+      - PMA_HOST=mysql
+    volumes:
+      - phpmyadmin_data:/var/www/html/
+
+  php:
+    environment:
+      - YII_ENV=dev
+      - PHP_IDE_CONFIG=serverName=docker
+    volumes:
+      - ./docker/php/php-dev.ini:/usr/local/etc/php/conf.d/php.ini

@@ -1,0 +1,16 @@
+services:
+  selenium:
+    image: selenium/standalone-chrome
+    restart: always
+    shm_size: 2gb
+
+  mysql:
+    environment:
+      MYSQL_DATABASE: yii2backend_test
+
+  php:
+    environment:
+      DB_NAME: yii2backend_test
+      YII_ENV: test
+    volumes:
+      - ./docker/php/php-test.ini:/usr/local/etc/php/conf.d/php.ini

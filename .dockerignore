@@ -1,0 +1,42 @@
+/.git
+/.idea
+/.phpdoc
+/.vscode
+/.env
+/.yarn
+/.vagrant
+# Runtime dirs
+/admin/runtime
+!/admin/runtime/.gitignore
+/api/runtime
+!/api/runtime/.gitignore
+/common/runtime
+!/common/runtime/.gitignore
+/console/runtime
+!/console/runtime/.gitignore
+/frontend/runtime
+!/frontend/runtime/.gitignore
+# Temp dirs
+/docker/mysql/data
+/node_modules
+/vendor
+# Assets dirs
+/htdocs/admin/assets
+!/htdocs/admin/assets/.gitignore
+/htdocs/api/assets
+!/htdocs/api/assets/.gitignore
+/htdocs/uploads
+!/htdocs/uploads/.gitignore
+/htdocs/assets
+!/htdocs/assets/.gitignore
+
+package-lock.json
+pnpm-lock.yml
+pnpm-lock.yaml
+yarn.lock
+
+/c3.php
+/.htaccess
+# Open Server config files
+/htdocs/Apache_2.4-PHP_*+Nginx_*_vhost[an].conf
+/htdocs/Nginx_*_vhost.conf

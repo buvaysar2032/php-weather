@@ -1,0 +1,50 @@
+services:
+  nginx:
+    image: nginx:alpine-slim
+    restart: always
+    depends_on:
+      - php
+    environment:
+      FASTCGI_PASS_HOST: php
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx/conf
+    volumes:
+      - ./:/app:delegated
+      - ./docker/nginx/conf/:/etc/nginx/conf/
+      - ./docker/nginx/app.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - '3000:80'
+  mysql:
+    image: mysql:latest
+    restart: always
+    cap_add: [SYS_NICE]
+    command: ["--log_bin_trust_function_creators=1"]
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: yii2backend
+      MYSQL_PASSWORD: 111111
+      MYSQL_DATABASE: yii2backend
+    volumes:
+      - ./docker/mysql/data:/var/lib/mysql
+      - ./docker/mysql/config:/etc/mysql/conf.d:ro # В Windows надо повесить флаг "Только для чтения"!
+
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    restart: always
+    working_dir: /app
+    depends_on:
+      - mysql
+    environment:
+      WAIT_HOSTS: mysql:3306
+      WAIT_TIMEOUT: 300
+      WAIT_SLEEP_INTERVAL: 30
+      WAIT_HOST_CONNECT_TIMEOUT: 30
+      DB_HOST: mysql
+      DB_USER: yii2backend
+      DB_PASS: 111111
+      DB_NAME: yii2backend
+      YII_ENV: prod
+    volumes:
+      - ./docker/php/php-prod.ini:/usr/local/etc/php/conf.d/php.ini
+      - ./:/app:delegated

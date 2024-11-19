@@ -1,0 +1,252 @@
+a:not([href]) {
+  color: inherit;
+  text-decoration: none;
+}
+
+.b-tooltip:not([style*='transform']),
+.tooltip {
+  top: 0;
+}
+
+.btn ~ .btn {
+  margin-left: 10px;
+}
+
+.btn-outline-secondary {
+  color: var(--bs-body-color);
+}
+
+.v-center {
+  vertical-align: middle !important;
+}
+
+.navbar {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+
+  .dropdown-menu {
+    a.dropdown-item {
+      padding: 0.25rem 1.5rem;
+    }
+  }
+
+  /* divider-vertical return */
+  .divider-vertical {
+    height: 35px;
+    margin: 0;
+    border-right: 1px solid #cfd8dc;
+    border-left: 1px solid #eceff1;
+  }
+
+  &-inverse {
+    .divider-vertical {
+      border-right-color: #222;
+      border-left-color: #111;
+    }
+  }
+
+  .nav-pills {
+    .nav-link {
+      &.active, &.active:hover, &.active:focus {
+        background-color: steelblue;
+        color: white;
+      }
+    }
+
+    .dropdown-item.active {
+      background-color: steelblue;
+      color: white;
+    }
+  }
+}
+
+.detail-view {
+  td, th {
+    padding: 0.35rem !important;
+  }
+
+  td {
+    width: 70%;
+  }
+
+  td {
+    img {
+      max-height: 200px;
+    }
+  }
+}
+
+.grid-view {
+  .filters {
+    input, select {
+      min-width: 50px;
+    }
+  }
+
+  td {
+    img {
+      max-width: 100px;
+    }
+  }
+
+  table.table {
+    th {
+      padding: 0.35rem 0.5rem;
+    }
+
+    td {
+      white-space: nowrap;
+      padding: 0.35rem;
+    }
+  }
+}
+
+.select2-selection {
+  &__rendered {
+    margin-right: 17px;
+  }
+}
+
+.collapse-grid {
+  max-height: 500px;
+  overflow: auto;
+}
+
+.checkbox-label {
+  margin-right: 50px;
+}
+
+.custom-file {
+  height: auto;
+
+  &-label::after {
+    content: 'Выбрать';
+  }
+}
+
+.popover {
+  &-x {
+    position: absolute;
+
+    &.top .arrow::after {
+      border-top-color: var(--bs-body-bg) !important;
+    }
+    &.right .arrow::after {
+      border-right-color: var(--bs-body-bg) !important;
+    }
+    &.bottom .arrow::after {
+      border-bottom-color: var(--bs-body-bg) !important;
+    }
+    &.left .arrow::after {
+      border-left-color: var(--bs-body-bg) !important;
+    }
+  }
+
+  &-header, &-title, &-content, &-footer {
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+
+    .close {
+      color: var(--bs-body-color) !important;
+    }
+  }
+
+  &-content,
+  &-title {
+    padding: 4px;
+  }
+
+  &-footer {
+    .btn {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.form-control {
+  .is-valid, .is-invalid {
+    background-position: right calc(0.7em + 0.1875rem) center;
+  }
+
+  &.range-value {
+    height: calc(2.25rem + 2px);
+    padding-right: 2.6rem;
+    background-color: #fff;
+    opacity: 1;
+  }
+}
+
+td.kv-group-even {
+  background-color: var(--bs-table-active-bg) !important;
+}
+
+td.kv-group-odd {
+  background-color: var(--bs-table-striped-bg) !important;
+}
+
+.kv {
+  &-drp-container {
+    color: var(--bs-dark);
+  }
+
+  &-plugin-loading ~ select {
+    padding: 2px;
+  }
+
+  &-table-header, &-table-footer {
+    background: unset;
+  }
+
+  &-editable-popover {
+    & + .select2-container--open {
+      z-index: 1066;
+    }
+  }
+}
+
+.daterangepicker {
+  background-color: var(--bs-body-bg);
+
+  .calendar-table {
+    background-color: var(--bs-body-bg);
+  }
+
+  td {
+    &.active, &.active:hover {
+      background-color: var(--bs-primary);
+    }
+
+    &.available:hover {
+      background-color: var(--bs-success);
+      color: var(--bs-light);
+    }
+
+    &.off {
+      background-color: var(--bs-gray-500);
+      color: var(--bs-dark);
+    }
+  }
+}
+
+.dropdown-menu.kv-checkbox-list {
+  .form-check {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-start;
+
+    &-input {
+      margin: 0 5px 0 0;
+      flex: 0 0 auto;
+    }
+  }
+}
+
+@media (max-width: 992px) {
+  .navbar-collapse {
+    .nav {
+      & > .divider-vertical {
+        display: none;
+      }
+    }
+  }
+}

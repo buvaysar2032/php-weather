@@ -1,0 +1,6 @@
+suite_namespace: admin\tests\unit
+actor: UnitTester
+modules:
+    enabled:
+        - Yii2:
+            cleanup: false

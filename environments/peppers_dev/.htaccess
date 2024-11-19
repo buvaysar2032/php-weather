@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+  Options +FollowSymlinks -Indexes
+  SetEnv HTTP_MOD_REWRITE On
+  RewriteEngine On
+  RewriteCond %{REQUEST_URI} !/(htdocs|data|builds|content)/
+  RewriteRule ^(.*)$ htdocs/$1 [DPI]
+
+  RewriteCond %{REQUEST_FILENAME}.php -f
+  RewriteRule ^(.*)$ $1.php [END]
+
+  RewriteCond %{REQUEST_FILENAME}.html -f
+  RewriteRule ^(.*)$ $1.html [END]
+
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteCond %{REQUEST_URI} !/$
+  RewriteRule ^(.*)$ %{REQUEST_URI}/ [R=302]
+</IfModule>

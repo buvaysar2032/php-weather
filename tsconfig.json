@@ -1,0 +1,48 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "lib": [
+      "ESNext",
+      "DOM"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "noEmit": true,
+    "noImplicitAny": false,
+    "paths": {
+      "@frontend/*": [
+        "vue/frontend/*"
+      ],
+      "@admin/*": [
+        "vue/admin/*"
+      ]
+    },
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ESNext",
+    "useDefineForClassFields": true
+  },
+  "exclude": [
+    "node_modules",
+    "htdocs/admin/assets",
+    "htdocs/assets"
+  ],
+  "files": [
+    "./shims-vue.d.ts"
+  ],
+  "include": [
+    "vue/**/*.ts",
+    "vue/**/*.tsx",
+    "vue/**/*.vue"
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    }
+  ]
+}

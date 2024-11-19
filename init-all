@@ -1,0 +1,436 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * Peppers Backend Template Initialization Tool
+ *
+ * Init environment (default to "peppers"): `--env=prod`
+ *
+ * Strict domain defining: `--domain=https://some.domain.loc`
+ *
+ * DB configuration options:
+ * - `--db-host=127.0.0.1:3306`
+ * - `--db-name=some-db`
+ * - `--db-user=some-user`
+ * - `--db-password=some-password`
+ *
+ * For create admin after initialization add flag:`-a`
+ *
+ * For safe no rewrite init add flag: `-u`
+ *
+ * @author m.kropukhinsky <m.kropukhinsky@peppers-studio.ru>
+ */
+if (PHP_VERSION_ID < 80000) {
+    echo 'At least PHP 8.0 is required to run this script!';
+    exit(1);
+}
+
+require 'environments/echo.php';
+
+const DESCRIPTOR_SPEC = [STDIN, STDOUT, STDOUT];
+const ENV_FILE = __DIR__ . '/.env';
+const ENVIRONMENTS = [
+    'peppers' => 'Peppers Development',
+    'dev' => 'Stage Development',
+    'prod' => 'Stage Production'
+];
+
+$dir = __DIR__;
+$arguments = arguments($argv);
+$flags = $arguments['flags'];
+$options = $arguments['options'];
+$isUpdate = false;
+if (in_array('u', $flags, true)) {
+    $isUpdate = true;
+}
+
+echo formatMessage('Checking Requirements...', ['bold', 'fg-yellow']) . PHP_EOL;
+require $dir . '/requirements/RequirementChecker.php';
+$requirementsChecker = new RequirementChecker();
+$requirementsChecker->checkYii()->render();
+if (!empty($requirementsChecker->result['summary']['errors'])) {
+    exit(1);
+}
+
+$currentEnv = $options['env'] ?? 'peppers';
+$env = ENVIRONMENTS[$currentEnv];
+echo formatMessage("Environment \"$env\"", ['bold', 'fg-yellow']) . PHP_EOL;
+readEnvFile();
+$_ENV['YII_ENV'] = $currentEnv === 'prod' ? 'prod' : 'dev';
+saveEnvFile();
+// Базовая инициализация
+echo formatMessage('Basic initialization', ['fg-cyan']) . PHP_EOL;
+$overwrite = $isUpdate ? 'n' : 'All';
+consolePhpExec("$dir/init --env=\"$env\" --overwrite=$overwrite");
+
+// Установка доменного имени
+if (array_key_exists('domain', $options)) {
+    echo formatMessage('Set domain name to params...', ['fg-cyan']) . PHP_EOL;
+    setDomainNameParameter($options['domain']);
+    echo formatMessage('Success', ['fg-green']) . PHP_EOL;
+}
+
+// Проверка версии композера
+exec('composer -V', $composerVer, $exitCode);
+preg_match('/\d+\.\d+(\.\d+)?/', $composerVer[0] ?? '', $matches);
+$composerVer = $matches[0] ?? null;
+// Выбор исполняемого файла композера
+$isComposerPreInstalled = $composerVer && version_compare($composerVer, '2.0.0') > 0;
+$composerExec = $isComposerPreInstalled ? 'composer' : ($dir . '/composer.phar');
+// Установка композера
+if (!$isComposerPreInstalled && !file_exists($dir . '/composer.phar')) {
+    echo formatMessage('Installing composer', ['fg-cyan']) . PHP_EOL;
+    copy('https://getcomposer.org/installer', $dir . '/composer-setup.php');
+    if (
+        hash_file('sha384', $dir . '/composer-setup.php')
+        === file_get_contents('https://composer.github.io/installer.sig')
+    ) {
+        echo formatMessage('Installer verified', ['fg-green']);
+    } else {
+        echo formatMessage('Installer corrupt', ['fg-red']);
+        unlink('composer-setup.php');
+        exit(1);
+    }
+    echo PHP_EOL;
+    consolePhpExec($dir . '/composer-setup.php');
+    unlink($dir . '/composer-setup.php');
+} else {
+    // Обновление уже установленного композера
+    echo formatMessage('Composer already installed', ['fg-green']) . PHP_EOL;
+    $cmd = $composerExec . ' self-update';
+    if ($isComposerPreInstalled) {
+        consoleExec($cmd);
+    } else {
+        consolePhpExec($cmd);
+    }
+}
+
+// Установка зависимостей
+$workingDir = $dir ? "--working-dir=$dir" : null;
+echo formatMessage('Installing dependencies...', ['fg-cyan']) . PHP_EOL;
+if ($isUpdate) {
+    $cmd = $composerExec . ' install --no-interaction ' . $workingDir;
+} else {
+    $cmd = $composerExec . ' update --no-interaction ' . $workingDir;
+}
+
+if ($currentEnv === 'prod') {
+    $cmd .= ' --no-dev';
+}
+if ($isComposerPreInstalled) {
+    consoleExec($cmd);
+} else {
+    consolePhpExec($cmd);
+}
+
+// Настройка подключения к БД
+if (
+    array_key_exists('db-host', $options) ||
+    array_key_exists('db-name', $options) ||
+    array_key_exists('db-user', $options) ||
+    array_key_exists('db-password', $options)
+) {
+    echo formatMessage('Updating database config', ['fg-cyan']) . PHP_EOL;
+    updateDbConfig($options);
+}
+
+echo formatMessage('Testing database connection...', ['fg-cyan']) . PHP_EOL;
+$dbActive = testConnection();
+
+// Применение миграций
+if ($dbActive) {
+    echo formatMessage('Applying migrations...', ['fg-cyan']) . PHP_EOL;
+    consolePhpExec($dir . '/yii migrate --interactive=0');
+    consolePhpExec($dir . '/yii rbac/migrate --interactive=0');
+}
+// Установка node зависимостей и сборка js билдов
+if ($pkgManager = getPackageManagerExec()) {
+    echo formatMessage('Installing node dependencies...', ['fg-cyan']) . PHP_EOL;
+    consoleExec("$pkgManager install");
+    echo formatMessage('Build Vue framework...', ['fg-cyan']) . PHP_EOL;
+    consoleExec("$pkgManager run build");
+} else {
+    echo formatMessage('ERROR. Skipped installing of node dependencies - `npm` or `yarn` is not installed', ['fg-red']
+        ) . PHP_EOL;
+}
+
+// Создание админа
+if ($dbActive && in_array('a', $flags, true)) {
+    echo formatMessage('Administrator creation...', ['fg-cyan']) . PHP_EOL;
+    consolePhpExec($dir . '/yii user-admin/create');
+}
+echo PHP_EOL . formatMessage('Fast initialization done!', ['bold', 'fg-green']) . PHP_EOL;
+exit(0);
+
+/**
+ * Обновление конфигурации БД
+ */
+function updateDbConfig(array $arguments): void
+{
+    readEnvFile();
+    if (!empty($arguments['db-host'])) {
+        $_ENV['DB_HOST'] = $arguments['db-host'];
+    }
+    if (!empty($arguments['db-name'])) {
+        $_ENV['DB_NAME'] = $arguments['db-name'];
+    }
+    if (!empty($arguments['db-user'])) {
+        $_ENV['DB_USER'] = $arguments['db-user'];
+    }
+    if (!empty($arguments['db-password'])) {
+        $_ENV['DB_PASS'] = $arguments['db-password'];
+    }
+    saveEnvFile();
+}
+
+/**
+ * Проверка подключения к БД
+ *
+ * @return bool Было ли подключение успешным
+ */
+function testConnection(): bool
+{
+    $dbConfig = [];
+    readEnvFile();
+    if (!empty($_ENV['DB_NAME']) || getenv('DB_NAME')) {
+        $dbConfig['dsn'] = 'mysql:host=' . ($_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: 'localhost') .
+            ';dbname=' . ($_ENV['DB_NAME'] ?? getenv('DB_NAME'));
+    }
+    if (!empty($_ENV['DB_CHARSET']) || getenv('DB_CHARSET')) {
+        $dbConfig['charset'] = $_ENV['DB_CHARSET'] ?? getenv('DB_CHARSET');
+    }
+    if (!empty($dbConfig['charset'])) {
+        $dbConfig['dsn'] = rtrim($dbConfig['dsn'], ';');
+        $dbConfig['dsn'] .= ";charset={$dbConfig['charset']}";
+    }
+    if (!empty($_ENV['DB_USER']) || getenv('DB_USER')) {
+        $dbConfig['username'] = $_ENV['DB_USER'] ?? getenv('DB_USER');
+    }
+    if (!empty($_ENV['DB_PASS']) || getenv('DB_PASS')) {
+        $dbConfig['password'] = $_ENV['DB_PASS'] ?? getenv('DB_PASS');
+    }
+    try {
+        $pdo = new PDO($dbConfig['dsn'], $dbConfig['username'], $dbConfig['password'] ?? null);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        preg_match('/;?dbname=(.+?);.*?$/', $dbConfig['dsn'], $matches);
+        $dbname = $matches[1];
+        $stmt = $pdo->prepare(
+            'SELECT default_character_set_name FROM information_schema.SCHEMATA S WHERE schema_name = :schema_name'
+        );
+        $stmt->execute(['schema_name' => $dbname]);
+        $charset = $stmt->fetch()[0] ?? '';
+        echo formatMessage("Connected database to database \"$dbname\" with charset $charset", ['fg-cyan']) . PHP_EOL;
+        if ($dbname && !str_contains($charset, $dbConfig['charset'])) {
+            $collate = "{$dbConfig['charset']}_unicode_ci";
+            echo formatMessage("Updating charset to $collate...", ['fg-cyan']) . PHP_EOL;
+            $pdo->query("ALTER DATABASE $dbname CHARACTER SET {$dbConfig['charset']} COLLATE $collate");
+            echo formatMessage('Success', ['fg-green']) . PHP_EOL;
+        }
+        echo formatMessage('Successful connection', ['fg-green']) . PHP_EOL;
+        return true;
+    } catch (PDOException $exception) {
+        echo formatMessage('Database connection error: ' . $exception->getMessage(), ['fg-red']) . PHP_EOL;
+        return false;
+    }
+}
+
+/**
+ * Подставляем доменное имя в конфигурацию
+ */
+function setDomainNameParameter(string $domain): void
+{
+    $filename = __DIR__ . '/common/config/params-local.php';
+    if (!file_exists($filename)) {
+        echo formatMessage('Initialization error. File ' . $filename . ' not found', ['fg-red']);
+        exit(1);
+    }
+    $paramsLocal = file_get_contents($filename);
+    $paramsLocal = preg_replace("/'domainUrl'\s+=>\s+'.*'/", "'domainUrl' => '$domain'", $paramsLocal);
+    file_put_contents($filename, $paramsLocal);
+    readEnvFile();
+    $_ENV['APP_DOMAIN'] = $domain;
+    saveEnvFile();
+}
+
+/**
+ * Поиск пакетного менеджера node зависимостей
+ */
+function getPackageManagerExec(): ?string
+{
+    exec('pnpm -v', $pnpmVer, $exitCode);
+    if ($exitCode === 0) {
+        $pnpmVer = $pnpmVer[0];
+        echo formatMessage('Found `pnpm` version ' . $pnpmVer, ['fg-cyan']) . PHP_EOL;
+        if ((version_compare($pnpmVer, '7.0.0') > 0)) {
+            return 'pnpm';
+        }
+        echo formatMessage('ERROR. `pnpm` minimum required version - 7.0.0', ['fg-red']) . PHP_EOL;
+    }
+    exec('yarn -v', $yarnVer, $exitCode);
+    if ($exitCode === 0) {
+        $yarnVer = $yarnVer[0];
+        echo formatMessage('Found `yarn` version ' . $yarnVer, ['fg-cyan']) . PHP_EOL;
+        if ((version_compare($yarnVer, '1.20.0') > 0)) {
+            return 'yarn';
+        }
+        echo formatMessage('ERROR. `yarn` minimum required version - 1.20.0', ['fg-red']) . PHP_EOL;
+    }
+    exec('npm -v', $npmVer, $exitCode);
+    if ($exitCode === 0) {
+        $npmVer = $npmVer[0];
+        echo formatMessage('Found `npm` version ' . $npmVer, ['fg-cyan']) . PHP_EOL;
+        if ((version_compare($npmVer, '8.0.0') > 0)) {
+            return 'npm';
+        }
+        echo formatMessage('ERROR. `npm` minimum required version - 8.0.0', ['fg-red']) . PHP_EOL;
+    }
+    return null;
+}
+
+/**
+ * Выполнить стороннюю php команду
+ */
+function consolePhpExec(string $command): void
+{
+    consoleExec(PHP_BINARY . ' ' . $command);
+}
+
+/**
+ * Выполнить стороннюю команду
+ */
+function consoleExec(string $command): void
+{
+    $consoleHandle = proc_open($command, DESCRIPTOR_SPEC, $pipes);
+    $exitCode = proc_close($consoleHandle);
+    if ($exitCode !== 0) {
+        exit($exitCode);
+    }
+}
+
+/**
+ * Получение именованного списка всех переданных аргументов в консоли
+ */
+function arguments(array $args): array
+{
+    array_shift($args);
+    $endOfOptions = false;
+
+    $ret = [
+        'commands' => [],
+        'options' => [],
+        'flags' => [],
+        'arguments' => [],
+    ];
+
+    while ($arg = array_shift($args)) {
+        // if we have reached end of options,
+        //we cast all remaining argvs as arguments
+        if ($endOfOptions) {
+            $ret['arguments'][] = $arg;
+            continue;
+        }
+
+        // Is it a command? (prefixed with --)
+        if (str_starts_with($arg, '--')) {
+            // is it the end of option's flag?
+            if (!isset($arg[3])) {
+                $endOfOptions = true; // end of options;
+                continue;
+            }
+
+            $value = '';
+            $com = substr($arg, 2);
+
+            // is it the syntax '--option=argument'?
+            if (strpos($com, '=')) {
+                [$com, $value] = explode('=', $com, 2);
+            }
+            // is the option not followed by another option but by arguments
+            elseif (!str_starts_with($args[0], '-')) {
+                while (!str_starts_with($args[0], '-')) {
+                    $value .= array_shift($args) . ' ';
+                }
+                $value = rtrim($value, ' ');
+            }
+
+            $ret['options'][$com] = !empty($value) ? $value : true;
+            continue;
+        }
+
+        // Is it a flag or a serial of flags? (prefixed with -)
+        if (str_starts_with($arg, '-')) {
+            for ($i = 1; isset($arg[$i]); $i++) {
+                $ret['flags'][] = $arg[$i];
+            }
+            continue;
+        }
+
+        // finally, it is not option, nor flag, nor argument
+        $ret['commands'][] = $arg;
+    }
+
+    if (!count($ret['options']) && !count($ret['flags'])) {
+        $ret['arguments'] = array_merge($ret['commands'], $ret['arguments']);
+        $ret['commands'] = [];
+    }
+    return $ret;
+}
+
+
+function readEnvFile(): void
+{
+    $allowedEnvs = allowedEnvs();
+    $exists = file_exists(ENV_FILE);
+    $envs = explode(
+        "\n",
+        str_replace(
+            ["\r\n", "\n", "\r"],
+            "\n",
+            !$exists
+                ? file_get_contents(ENV_FILE . '.example')
+                : file_get_contents(ENV_FILE)
+        )
+    );
+    foreach ($envs as $env) {
+        if (!empty($env)) {
+            [$key, $value] = explode('=', $env);
+            if (in_array($key, $allowedEnvs, true)) {
+                $_ENV[$key] = $exists ? $value : ($_ENV[$key] ?? getenv($key) ?: $value);
+            }
+        }
+    }
+}
+
+function saveEnvFile(): void
+{
+    $allowedEnvs = allowedEnvs();
+    $content = [];
+    foreach ($_ENV as $key => $value) {
+        if (in_array($key, $allowedEnvs, true) && $value !== '' && !is_null($value)) {
+            $content[] = "$key=$value";
+        }
+    }
+    file_put_contents(ENV_FILE, implode("\n", $content));
+}
+
+function allowedEnvs(): array
+{
+    $envs = explode(
+        "\n",
+        str_replace(
+            ["\r\n", "\n", "\r"],
+            "\n",
+            file_get_contents(ENV_FILE . '.example')
+        )
+    );
+    $list = [];
+    foreach ($envs as $env) {
+        if (!empty($env)) {
+            [$key] = explode('=', $env);
+            if (!empty($key)) {
+                $list[] = $key;
+            }
+        }
+    }
+    return $list;
+}

@@ -1,0 +1,40 @@
+namespace: common\tests
+actor_suffix: Tester
+paths:
+  tests: tests
+  output: tests/_output
+  data: tests/_data
+  support: tests/_support
+bootstrap: _bootstrap.php
+settings:
+  colors: true
+  memory_limit: 1024M
+modules:
+  config:
+    Yii2:
+      configFile: 'config/codeception-local.php'
+coverage:
+  enabled: true
+  remote: false
+  remote_config: common/codeception.yml
+  whitelist:
+    include:
+      - components/*
+      - models/*
+      - modules/backup/controllers/*
+      - modules/backup/models/*
+      - modules/log/behaviors/*
+      - modules/log/controllers/*
+      - modules/log/models/*
+      - modules/mail/controllers/*
+      - modules/mail/models/*
+      - modules/rbac/components/Scanner.php
+      - modules/rbac/controllers/*
+      - modules/rbac/filters/*
+      - modules/rbac/models/*
+      - modules/rbac/modules/*
+      - modules/user/actions/*
+      - modules/user/controllers/*
+      - modules/user/helpers/*
+      - modules/user/models/*
+      - modules/user/social/*

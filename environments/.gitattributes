@@ -1,0 +1,7 @@
+peppers_dev/codecept text eol=lf
+peppers_dev/markdown text eol=lf
+peppers_dev/phpunit text eol=lf
+peppers_dev/yii text eol=lf
+peppers_dev/yii_test text eol=lf
+stage_dev/yii text eol=lf
+stage_prod/yii text eol=lf

@@ -1,0 +1,67 @@
+/.env
+# yii console commands
+/yii
+/yii.bat
+
+# dev console commands
+/codecept
+/codecept.bat
+/codeception.yml
+/rmfront
+/rmfront.bat
+
+# phpstorm project files
+.idea
+
+# vs-code project files
+.vscode
+
+# phpDocumentor
+phpDocumentor.phar
+.phpdoc
+
+# netbeans project files
+nbproject
+
+# zend studio for eclipse project files
+.buildpath
+.project
+.settings
+
+# windows thumbnail cache
+Thumbs.db
+
+# Mac DS_Store Files
+.DS_Store
+
+# vagrant runtime
+/.vagrant
+
+# composer vendor dir
+/vendor
+
+# node modules dir
+/.yarn
+/node_modules
+package-lock.json
+pnpm-lock.yml
+pnpm-lock.yaml
+yarn.lock
+
+# vue build
+/vue/dist
+
+# composer itself is not needed
+composer.phar
+composer.lock
+
+# phpunit itself is not needed
+phpunit.phar
+# local phpunit config
+/phpunit.xml
+
+/c3.php
+/.htaccess
+
+# Open Server config files
+/.osp

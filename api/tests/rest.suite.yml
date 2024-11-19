@@ -1,0 +1,13 @@
+suite_namespace: api\tests\rest
+actor: ApiTester
+class_name: ApiTester
+paths:
+  output: _output
+modules:
+    enabled:
+        - REST
+        - Yii2:
+            part: init
+    config:
+        Yii2:
+            configFile: 'config/codeception-local.php'

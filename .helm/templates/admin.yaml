@@ -1,0 +1,137 @@
+{{- $fullName := include "yii2.fullname" . -}}
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ $fullName }}-admin
+  namespace: {{ $fullName }}
+  labels:
+    {{- include "yii2.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $fullName }}-admin
+      k8s-app: {{ $fullName }}-admin
+  template:
+    metadata:
+      name: {{ $fullName }}-admin
+      labels:
+        app: {{ $fullName }}-admin
+        k8s-app: {{ $fullName }}-admin
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9253'
+    spec:
+      containers:
+        - name: {{ $fullName }}-admin
+          image: {{ .Values.Yii2.image }}
+          imagePullPolicy: Always
+          env:
+            - name: DB_HOST
+              value: {{ .Values.MySQL.host }}
+            - name: DB_USER
+              value: {{ .Values.MySQL.username }}
+            - name: DB_PASS
+              value: {{ .Values.MySQL.password }}
+            - name: DB_NAME
+              value: {{ .Values.MySQL.database }}
+            {{ if .Values.MySQL.slaveHosts }}
+            - name: DB_SLAVE_HOSTS
+              value: {{ .Values.MySQL.slaveHosts }}
+            {{ end }}
+            - name: YII_ENV
+              value: {{ .Values.Yii2.env }}
+            - name: S3_ENDPOINT
+              value: "http://{{ $fullName }}-s3:{{ .Values.S3.port }}"
+            - name: S3_REGION
+              value: {{ .Values.S3.region }}
+            - name: S3_KEY
+              value: {{ .Values.S3.key }}
+            - name: S3_SECRET
+              value: {{ .Values.S3.secret }}
+            - name: S3_BUCKET
+              value: {{ .Values.S3.bucket }}
+            - name: S3_PRIVATE_BUCKET
+              value: {{ .Values.S3.privateBucket }}
+            - name: MEMCAHCED_HOST
+              value: {{ .Values.Memcached.host }}
+            - name: MEMCAHCED_PORT
+              value: "{{ .Values.Memcached.port }}"
+            - name: REDIS_HOSTNAME
+              value: {{ .Values.Redis.host }}
+            - name: REDIS_PORT
+              value: "{{ .Values.Redis.port }}"
+            - name: REDIS_DATABASE
+              value: "{{ .Values.Redis.database }}"
+            - name: REDIS_PASSWORD
+              value: {{ .Values.Redis.password }}
+          volumeMounts:
+            - mountPath: /tmp
+              name: socket-volume
+        - name: {{ $fullName }}-admin-exporter
+          image: hipages/php-fpm_exporter
+          imagePullPolicy: IfNotPresent
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9253
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 9253
+            periodSeconds: 5
+          startupProbe:
+            failureThreshold: 120
+            periodSeconds: 1
+            httpGet:
+              path: /metrics
+              port: 9253
+          env:
+            - name: PHP_FPM_SCRAPE_URI
+              value: "unix:/tmp/php-fpm.sock;/php-fpm-status"
+            - name: PHP_FPM_FIX_PROCESS_COUNT
+              value: "true"
+            - name: PHP_FPM_LOG_LEVEL
+              value: info
+          resources:
+            limits:
+              cpu: 40m
+              memory: 32Mi
+            requests:
+              cpu: 40m
+              memory: 32Mi
+          volumeMounts:
+            - mountPath: /tmp
+              name: socket-volume
+      imagePullSecrets:
+        - name: registry-key
+      volumes:
+        - name: socket-volume
+          emptyDir: { }
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ $fullName }}-admin
+  namespace: {{ $fullName }}
+  labels:
+    app: {{ $fullName }}-admin
+    k8s-app: {{ $fullName }}-admin
+    project: {{ $fullName }}
+  annotations:
+    prometheus.io/http_probe: 'true'
+    prometheus.io/http_probe_port: '80'
+    prometheus.io/http_probe_path: /admin/site/health
+spec:
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: {{ .Values.Yii2.port }}
+      targetPort: {{ .Values.Yii2.port }}
+  selector:
+    k8s-app: {{ $fullName }}-admin

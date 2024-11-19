@@ -1,0 +1,63 @@
+{{- $fullName := include "yii2.fullname" . -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $fullName }}-backup
+  namespace: {{ $fullName }}
+  labels:
+    {{- include "yii2.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  schedule: {{ .Values.Yii2.backup.schedule }}
+  successfulJobsHistoryLimit: {{ .Values.Yii2.backup.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.Yii2.backup.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: {{ $fullName }}-backup
+              image: {{ .Values.Yii2.image }}
+              command: ["/bin/sh","-c"]
+              args: ["php yii daemon/clear-backups && php yii daemon/backup"]
+              imagePullPolicy: Always
+              env:
+              - name: DB_HOST
+                value: {{ .Values.MySQL.host }}
+              - name: DB_USER
+                value: {{ .Values.MySQL.username }}
+              - name: DB_PASS
+                value: {{ .Values.MySQL.password }}
+              - name: DB_NAME
+                value: {{ .Values.MySQL.database }}
+                {{ if .Values.MySQL.slaveHosts }}
+              - name: DB_SLAVE_HOSTS
+                value: {{ .Values.MySQL.slaveHosts }}
+                {{ end }}
+              - name: YII_ENV
+                value: {{ .Values.Yii2.env }}
+              - name: MEMCAHCED_HOST
+                value: {{ .Values.Memcached.host }}
+              - name: MEMCAHCED_PORT
+                value: "{{ .Values.Memcached.port }}"
+              - name: REDIS_HOSTNAME
+                value: {{ .Values.Redis.host }}
+              - name: REDIS_PORT
+                value: "{{ .Values.Redis.port }}"
+              - name: REDIS_DATABASE
+                value: "{{ .Values.Redis.database }}"
+              - name: REDIS_PASSWORD
+                value: {{ .Values.Redis.password }}
+              volumeMounts:
+              - name: storage
+                mountPath: /app/admin/runtime/backup_db
+          imagePullSecrets:
+            - name: registry-key
+          volumes:
+            - name: storage
+              persistentVolumeClaim:
+                claimName: backup
+          restartPolicy: Never

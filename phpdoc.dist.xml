@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpdocumentor
+    configVersion="3"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://www.phpdoc.org"
+    xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/phpDocumentor/phpDocumentor/master/data/xsd/phpdoc.xsd"
+>
+    <title>Yii 2 Backend Api</title>
+    <paths>
+        <output>htdocs/docs</output>
+    </paths>
+    <version number="1.0.0">
+        <api format="php">
+            <source dsn=".">
+                <path>admin/</path>
+                <path>api/</path>
+                <path>common/</path>
+                <path>console/</path>
+                <path>frontend/</path>
+                <path>vendor/kartik-v/yii2-datecontrol/**/*</path>
+                <path>vendor/kartik-v/yii2-grid/src/DataColumn.php</path>
+                <path>vendor/kartik-v/yii2-widget-activeform/**/*</path>
+                <path>vendor/kartik-v/yii2-widget-colorinput/**/*</path>
+                <path>vendor/kartik-v/yii2-widget-datepicker/**/*</path>
+                <path>vendor/kartik-v/yii2-widget-datetimepicker/**/*</path>
+                <path>vendor/kartik-v/yii2-widget-select2/**/*</path>
+                <path>vendor/kartik-v/yii2-widget-switchinput/**/*</path>
+                <path>vendor/kartik-v/yii2-widget-timepicker/**/*</path>
+                <path>vendor/yiisoft/yii2/base/Behavior.php</path>
+                <path>vendor/yiisoft/yii2/base/Exception.php</path>
+                <path>vendor/yiisoft/yii2/base/Model.php</path>
+                <path>vendor/yiisoft/yii2/base/UserException.php</path>
+                <path>vendor/yiisoft/yii2/base/Widget.php</path>
+                <path>vendor/yiisoft/yii2/data/ActiveDataProvider.php</path>
+                <path>vendor/yiisoft/yii2/db/ActiveQuery.php</path>
+                <path>vendor/yiisoft/yii2/db/ActiveRecord.php</path>
+                <path>vendor/yiisoft/yii2/grid/**/*</path>
+                <path>vendor/yiisoft/yii2/web/AssetBundle.php</path>
+                <path>vendor/yiisoft/yii2/web/Controller.php</path>
+            </source>
+            <ignore symlinks="true" hidden="true">
+                <path>admin/assets/**/*</path>
+                <path>admin/fixtures/**/*</path>
+                <path>admin/runtime/**/*</path>
+                <path>admin/tests/**/*</path>
+                <path>api/assets/**/*</path>
+                <path>api/tests/**/*</path>
+                <path>api/runtime/**/*</path>
+                <path>common/config/__autocomplete.php</path>
+                <path>common/fixtures/**/*</path>
+                <path>common/mail/**/*</path>
+                <path>common/modules/gii/**/*</path>
+                <path>common/runtime/**/*</path>
+                <path>common/tests/**/*</path>
+                <path>console/migrations/</path>
+                <path>console/runtime/**/*</path>
+                <path>environments/**/*</path>
+                <path>frontend/assets/**/*</path>
+                <path>frontend/runtime/**/*</path>
+                <path>frontend/tests/**/*</path>
+                <path>vendor/yiisoft/yii2/test/**/*</path>
+
+                <!-- migrations -->
+                <path>admin/modules/modelExportImport/migrations/</path>
+                <path>admin/modules/rbacAdmin/migrations/</path>
+                <path>common/modules/user/migrations/</path>
+                <path>common/modules/upload/migrations/</path>
+                <path>common/modules/mail/migrations/</path>
+                <path>common/modules/log/migrations/</path>
+                <path>common/modules/rbac/migrations/</path>
+                <path>common/modules/imageIndex/migrations/</path>
+                <path>vendor/yiisoft/yii2/caching/migrations/**/*</path>
+                <path>vendor/yiisoft/yii2/i18n/migrations/**/*</path>
+                <path>vendor/yiisoft/yii2/log/migrations/**/*</path>
+                <path>vendor/yiisoft/yii2/rbac/migrations/**/*</path>
+                <path>vendor/yiisoft/yii2/web/migrations/**/*</path>
+            </ignore>
+
+            <extensions>
+                <extension>php</extension>
+            </extensions>
+
+            <ignore-tags>
+                <!-- Swagger tags -->
+                <ignore-tag>OA\Info</ignore-tag>
+                <ignore-tag>OA\Server</ignore-tag>
+                <ignore-tag>OA\SecurityScheme</ignore-tag>
+                <ignore-tag>OA\Schema</ignore-tag>
+                <ignore-tag>OA\Get</ignore-tag>
+                <ignore-tag>OA\Post</ignore-tag>
+            </ignore-tags>
+        </api>
+    </version>
+</phpdocumentor>
